@@ -45,7 +45,6 @@ router
       });
     }
 
-    // const token  = req.headers.authorization.replace('Bearer ', '');
     const token = req.headers.authorization;
     const userInput = req.body.message;
     const id_package = req.body.id_package;
@@ -60,16 +59,29 @@ router
           },
         }
       );
+      if (apiResponse.status != 200) {
+        const errMsg = (await apiResponse.json()).message;
+        throw new Error(errMsg);
+      }
+
       const package_details = JSON.stringify((await apiResponse.json()).data);
 
       let source_context_order = "";
-      const pdf_files = ["RapatPerdana.pdf", "rundown.pdf", "DP.pdf", "FP.pdf"];
+      const pdf_files = await (
+        await fetch(`https://be.storease.id/api/document/${id_package}`, {
+          method: "get",
+          headers: {
+            Authorization: token,
+          },
+        })
+      ).json();
+
       for (let index = 0; index < pdf_files.length; index++) {
         const pdf_text = await readPdf(pdf_files[index]);
+        console.log(pdf_text);
         source_context_order += `\n\n${pdf_text}`;
       }
       source_context_order += `\n\nPackage Details berformat json: ${package_details} \nini adalah data paket yang customer pilih ${package_details}`;
-      //   source_context_order += `\nini adalah data paket yang customer pilih ${package_details}`;
       console.log(source_context_order);
 
       const model = genAI.getGenerativeModel({
@@ -132,31 +144,23 @@ router
       });
     }
 
-    // const token  = req.headers.authorization.replace('Bearer ', '');
     const token = req.headers.authorization;
     const userInput = req.body.message;
 
     try {
-      const apiResponse = await fetch(
-        `https://be.storease.id/api/homepage`,
-        {
-          method: "get",
-          headers: {
-            Authorization: token,
-          },
-        }
-      );
-      const package_details = JSON.stringify((await apiResponse.json()).data);
-
-      let source_context_order = "";
-      const pdf_files = ["RapatPerdana.pdf", "rundown.pdf", "DP.pdf", "FP.pdf"];
-      for (let index = 0; index < pdf_files.length; index++) {
-        const pdf_text = await readPdf(pdf_files[index]);
-        source_context_order += `\n\n${pdf_text}`;
+      const apiResponse = await fetch(`https://be.storease.id/api/homepage`, {
+        method: "get",
+        headers: {
+          Authorization: token,
+        },
+      });
+      if (apiResponse.status != 200) {
+        const errMsg = (await apiResponse.json()).message;
+        throw new Error(errMsg);
       }
-      source_context_order += `\n\nPackage Details berformat json: ${package_details} \nini adalah data paket yang customer pilih ${package_details}`;
-      //   source_context_order += `\nini adalah data paket yang customer pilih ${package_details}`;
-      console.log(source_context_order);
+
+      const package_details = (await apiResponse.json()).data;
+      console.log(package_details);
 
       const model = genAI.getGenerativeModel({
         model: "gemini-1.5-flash",
@@ -171,7 +175,7 @@ router
             role: "user",
             parts: [
               {
-                text: "Hello, saya sedang mencari alat untuk kebutuhan pernikahan.",
+                text: "Hello, saya sedang merencanakan pernikahan!",
               },
             ],
           },
@@ -179,7 +183,9 @@ router
             role: "model",
             parts: [
               {
-                text: source_context_order,
+                text: `Berikut data paket kami dalam bentuk string json(harap parse dulu agar dapat dibaca): ${JSON.stringify(
+                  package_details
+                )}`,
               },
             ],
           },
@@ -195,8 +201,6 @@ router
       });
     }
   });
-
-// app.use(express.json());
 
 app.listen(3000, () => {
   console.log("berjalan");

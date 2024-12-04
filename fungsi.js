@@ -1,10 +1,9 @@
-const fs = require("fs");
 const pdf = require("pdf-parse");
 
-async function readPdf(file) {
+async function readPdf(file_url) {
   try {
-    const bufferData = fs.readFileSync(file);
-    const pdfData = await pdf(bufferData);
+    const buffer = await (await fetch(file_url)).arrayBuffer();
+    const pdfData = await pdf(Buffer.from(buffer));
     return pdfData.text;
   } catch (error) {
     throw error;
